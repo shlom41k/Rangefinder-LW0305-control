@@ -42,7 +42,7 @@ class MainWindow(QtWidgets.QMainWindow):
         "cmd_e0": 0xE0,
     }
 
-    single_shot_delay = 1
+    single_shot_delay = 1.0
 
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
@@ -102,6 +102,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # Disable rangefinder control pannel
         self.mbr_tab.setDisabled(True)
         self.measure_group_box.setDisabled(True)
+
+        # Set shot delay box
+        self.shot_delay_box.setRange(0.5, 10)
+        self.shot_delay_box.setValue(1.0)
 
     def disp_info(self, msg_type: str, message: str):
         # Send some info into message field
@@ -297,7 +301,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def cmd_single_shot(self):
         # Set shot delay
-        self.single_shot_delay = 1
+        self.single_shot_delay = self.shot_delay_box.value()
 
         # Command for single shot
         cmd = [self.commands.get("cmd_83"), 0x00]
@@ -554,7 +558,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def cmd_83(self):
 
         # When SPEED mode, delay for measure must be ~3 sec
-        self.single_shot_delay = 3 if self.x83_d3_cb.currentText() == "Speed" else 1
+        self.single_shot_delay = 3 if (self.x83_d3_cb.currentText() == "Speed" and self.shot_delay_box.value() < 3) else self.shot_delay_box.value()
 
         # Only RANGING (0x00) and SPEED (0x01) modes support
         mode = 0x01 if self.x83_d3_cb.currentText() == "Speed" else 0x00

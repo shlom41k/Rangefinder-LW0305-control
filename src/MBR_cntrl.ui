@@ -3882,7 +3882,7 @@
        <property name="geometry">
         <rect>
          <x>460</x>
-         <y>260</y>
+         <y>240</y>
          <width>111</width>
          <height>41</height>
         </rect>
@@ -3905,7 +3905,7 @@
        <property name="geometry">
         <rect>
          <x>460</x>
-         <y>320</y>
+         <y>300</y>
          <width>111</width>
          <height>31</height>
         </rect>
@@ -3943,6 +3943,53 @@
        </property>
        <property name="wordWrap">
         <bool>true</bool>
+       </property>
+      </widget>
+      <widget class="QDoubleSpinBox" name="shot_delay_box">
+       <property name="geometry">
+        <rect>
+         <x>540</x>
+         <y>350</y>
+         <width>51</width>
+         <height>22</height>
+        </rect>
+       </property>
+       <property name="decimals">
+        <number>1</number>
+       </property>
+       <property name="minimum">
+        <double>0.500000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>10.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+       <property name="value">
+        <double>1.000000000000000</double>
+       </property>
+      </widget>
+      <widget class="QLabel" name="x81_b3_lbl_4">
+       <property name="geometry">
+        <rect>
+         <x>440</x>
+         <y>350</y>
+         <width>91</width>
+         <height>21</height>
+        </rect>
+       </property>
+       <property name="font">
+        <font>
+         <weight>50</weight>
+         <bold>false</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Measure delay, s:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
       </widget>
      </widget>

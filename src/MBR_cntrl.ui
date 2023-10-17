@@ -4159,12 +4159,12 @@
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
       </widget>
-      <widget class="QCheckBox" name="shot_log_chbox">
+      <widget class="QCheckBox" name="info_log_chbox">
        <property name="geometry">
         <rect>
          <x>460</x>
          <y>780</y>
-         <width>81</width>
+         <width>71</width>
          <height>20</height>
         </rect>
        </property>
@@ -4175,7 +4175,29 @@
         </font>
        </property>
        <property name="text">
-        <string>Logging</string>
+        <string>Info log</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
+      </widget>
+      <widget class="QCheckBox" name="shot_log_chbox">
+       <property name="geometry">
+        <rect>
+         <x>540</x>
+         <y>780</y>
+         <width>91</width>
+         <height>20</height>
+        </rect>
+       </property>
+       <property name="font">
+        <font>
+         <weight>50</weight>
+         <bold>false</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Measure log</string>
        </property>
        <property name="checked">
         <bool>true</bool>

@@ -46,7 +46,12 @@ class MainWindow(QtWidgets.QMainWindow):
         "cmd_e0": 0xE0,
     }
 
+    # Delay between command for start randing
+    # and command for reading measure results
     single_shot_delay = 1.0
+
+    # Delay between request and response
+    com_delay = 0.1
 
     ShotsThread: Thread
 
@@ -62,6 +67,10 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # COM port for work with rangefinder
         self.com = None
+
+        # Logging flags
+        self.info_log = True
+        self.shot_log = True
 
         # Single shot flag
         self.single_shot = False
@@ -115,7 +124,15 @@ class MainWindow(QtWidgets.QMainWindow):
         # combo boxes
         self.com_combo_box_portname.currentTextChanged.connect(self.select_com_port)
 
+        # check boxes
+        self.info_log_chbox.stateChanged.connect(self.en_dis_info_log)
+        self.shot_log_chbox.stateChanged.connect(self.en_dis_measure_log)
+
+        # spin boxes
+        self.shot_delay_box.valueChanged.connect(self.set_shot_delay)
+
         # Enable logging
+        self.info_log_chbox.setChecked(True)
         self.shot_log_chbox.setChecked(True)
 
         # Disable rangefinder control pannel
@@ -270,13 +287,13 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             if not self.com.isOpen():
                 self.com.open()
-                sleep(0.1)
+                sleep(self.com_delay)
 
             self.com.reset_input_buffer()
             self.com.reset_output_buffer()
             self.com.flushInput()
             self.com.flushOutput()
-            sleep(0.1)
+            sleep(self.com_delay)
 
             self.disp_info("INFO", "COM port connected")
         except:
@@ -332,6 +349,18 @@ class MainWindow(QtWidgets.QMainWindow):
         # while com.inWaiting():
         return self.com.readall().hex()
 
+    def en_dis_info_log(self):
+        # Enable/Disable info displaying
+        self.info_log = True if self.info_log_chbox.isChecked() else False
+
+    def en_dis_measure_log(self):
+        # Enable/Disable measure results displaying
+        self.shot_log = True if self.shot_log_chbox.isChecked() else False
+
+    def set_shot_delay(self):
+        # Set shot delay
+        self.single_shot_delay = self.shot_delay_box.value()
+
     def cmd_start_serial(self):
         # Command for start serial measure
 
@@ -342,7 +371,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.measure_group_box.setDisabled(True)
 
         # Disable logging
-        self.shot_log_chbox.setChecked(False)
+        self.info_log_chbox.setChecked(False)
+        # self.shot_log_chbox.setChecked(False)
 
         # Put up serial shots flag
         self.serial_shots = True
@@ -375,13 +405,12 @@ class MainWindow(QtWidgets.QMainWindow):
 
             self.ser_shot_ed.setText(str(self.shot_cnt))
             self.cmd_single_shot()
-            # sleep(1)
 
         self.cmd_stop_serial()
 
     def cmd_single_shot(self):
         # Set shot delay
-        self.single_shot_delay = self.shot_delay_box.value()
+        # self.single_shot_delay = self.shot_delay_box.value()
 
         # Command for single shot
         cmd = [self.commands.get("cmd_83"), 0x00]
@@ -393,13 +422,13 @@ class MainWindow(QtWidgets.QMainWindow):
         # Send command
         try:
             self.com_write(self.dev_addr, cmd, crc)
-            if self.shot_log_chbox.isChecked():
+            if self.info_log:
                 self.disp_info("INFO", f"To device --> address: {hex(self.dev_addr)}, command: {cmd}, CRC: {hex(crc)}")
 
             # Up single_shot flag
             self.single_shot = True
 
-            sleep(0.1)
+            sleep(self.com_delay)
         except:
             self.disp_info("ERROR", "Can't send message")
             return
@@ -413,7 +442,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 msg, dev_crc = ans[2:-2], int(ans[-2:], 16)
 
                 if self.crc_check(msg, dev_crc):
-                    if self.shot_log_chbox.isChecked():
+                    if self.info_log:
                         self.disp_info("INFO", f"From device <-- address: {hex(self.dev_addr)}, data: 0x{msg}, CRC: {hex(dev_crc)}")
 
                     # Wait for measure
@@ -443,7 +472,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self.com_write(self.dev_addr, [cmd], crc)
             self.disp_info("INFO", f"To device --> address: {hex(self.dev_addr)}, command: {hex(cmd)}, CRC: {hex(crc)}")
-            sleep(0.1)
+            sleep(self.com_delay)
         except:
             self.disp_info("ERROR", "Can't send message")
 
@@ -513,9 +542,9 @@ class MainWindow(QtWidgets.QMainWindow):
             # Send command
             try:
                 self.com_write(self.dev_addr, [cmd], crc)
-                if self.shot_log_chbox.isChecked():
+                if self.info_log:
                     self.disp_info("INFO", f"To device --> address: {hex(self.dev_addr)}, command: {hex(cmd)}, CRC: {hex(crc)}")
-                sleep(0.1)
+                sleep(self.com_delay)
             except:
                 self.disp_info("ERROR", "Can't send message")
 
@@ -534,7 +563,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 msg, dev_crc = ans[2:-2], int(ans[-2:], 16)
 
                 if self.crc_check(msg, dev_crc):
-                    if self.shot_log_chbox.isChecked():
+                    if self.info_log:
                         self.disp_info("INFO", f"From device <-- address: {hex(self.dev_addr)}, data: 0x{msg}, CRC: {hex(dev_crc)}")
 
                     # Message byte0
@@ -590,15 +619,17 @@ class MainWindow(QtWidgets.QMainWindow):
                             # Angle when distance is valid
                             angle = int(msg[8:10], 16)
 
-                            if self.serial_shots:
-                                msg = f"Shot: {self.shot_cnt}, total: {self.ser_shot_spbox.value()}, " \
-                                      f"DISTANCE: {distance} {'m' if msg_byte0_str[4] == '0' else 'y'}, " \
-                                      f"angle: {angle - 256 if angle >= 128 else angle} deg"
-                            else:
-                                msg = f"DISTANCE: {distance} {'m' if msg_byte0_str[4] == '0' else 'y'}, " \
-                                      f"angle: {angle - 256 if angle >= 128 else angle} deg"
+                            # When log enable
+                            if self.shot_log:
+                                if self.serial_shots:
+                                    msg = f"Shot: {self.shot_cnt}, total: {self.ser_shot_spbox.value()}, " \
+                                          f"DISTANCE: {distance} {'m' if msg_byte0_str[4] == '0' else 'y'}, " \
+                                          f"angle: {angle - 256 if angle >= 128 else angle} deg"
+                                else:
+                                    msg = f"DISTANCE: {distance} {'m' if msg_byte0_str[4] == '0' else 'y'}, " \
+                                          f"angle: {angle - 256 if angle >= 128 else angle} deg"
 
-                            self.disp_info("INFO", msg)
+                                self.disp_info("INFO", msg)
                         else:
                             # Ranging no result
                             if int(msg[4:6], 16) == 0x80:
@@ -618,13 +649,15 @@ class MainWindow(QtWidgets.QMainWindow):
                             # Angle when distance is invalid
                             angle = int(msg[6:8], 16)
 
-                            if self.serial_shots:
-                                msg = f"Shot: {self.shot_cnt}, total: {self.ser_shot_spbox.value()}, " \
-                                      f"Distance INVALID, angle: {angle - 256 if angle >= 128 else angle} deg"
-                            else:
-                                msg = f"Distance INVALID, angle: {angle - 256 if angle >= 128 else angle} deg"
+                            # When log enable
+                            if self.shot_log:
+                                if self.serial_shots:
+                                    msg = f"Shot: {self.shot_cnt}, total: {self.ser_shot_spbox.value()}, " \
+                                          f"Distance INVALID, angle: {angle - 256 if angle >= 128 else angle} deg"
+                                else:
+                                    msg = f"Distance INVALID, angle: {angle - 256 if angle >= 128 else angle} deg"
 
-                            self.disp_info("INFO", msg)
+                                self.disp_info("INFO", msg)
 
                         # Angle field
                         # print(angle)
@@ -641,12 +674,14 @@ class MainWindow(QtWidgets.QMainWindow):
                         # print(speed)
                         self.x81_speed_line_ed.setText(f"{speed}")
 
-                        if self.serial_shots:
-                            msg = f"Shot: {self.shot_cnt}, total: {self.ser_shot_spbox.value()}, SPEED: {speed} km/h"
-                        else:
-                            msg = f"SPEED: {speed} km/h"
+                        # When log enable
+                        if self.shot_log:
+                            if self.serial_shots:
+                                msg = f"Shot: {self.shot_cnt}, total: {self.ser_shot_spbox.value()}, SPEED: {speed} km/h"
+                            else:
+                                msg = f"SPEED: {speed} km/h"
 
-                        self.disp_info("INFO", msg)
+                            self.disp_info("INFO", msg)
 
                         # Angle field
                         self.x81_angle_line_ed.setText("---")
@@ -685,13 +720,13 @@ class MainWindow(QtWidgets.QMainWindow):
         # Send command
         try:
             self.com_write(self.dev_addr, cmd, crc)
-            if self.shot_log_chbox.isChecked():
+            if self.info_log:
                 self.disp_info("INFO", f"To device --> address: {hex(self.dev_addr)}, command: {cmd}, CRC: {hex(crc)}")
 
             # Up single_shot flag
             self.single_shot = True
 
-            sleep(0.1)
+            sleep(self.com_delay)
         except:
             self.disp_info("ERROR", "Can't send message")
             return
@@ -707,7 +742,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 msg, dev_crc = ans[2:-2], int(ans[-2:], 16)
 
                 if self.crc_check(msg, dev_crc):
-                    if self.shot_log_chbox.isChecked():
+                    if self.info_log:
                         self.disp_info("INFO", f"From device <-- address: {hex(self.dev_addr)}, data: 0x{msg}, CRC: {hex(dev_crc)}")
 
                     # Wait for measure
@@ -739,7 +774,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self.com_write(self.dev_addr, [cmd], crc)
             self.disp_info("INFO", f"To device --> address: {hex(self.dev_addr)}, command: {hex(cmd)}, CRC: {hex(crc)}")
-            sleep(0.1)
+            sleep(self.com_delay)
 
             self.x84_resp_line_ed.setText(f"Without response")
         except:
@@ -758,7 +793,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self.com_write(self.dev_addr, cmd, crc)
             self.disp_info("INFO", f"To device --> address: {hex(self.dev_addr)}, command: {cmd}, CRC: {hex(crc)}")
-            sleep(0.1)
+            sleep(self.com_delay)
             self.x8F_resp_line_ed.setText(f"Without response")
         except:
             self.disp_info("ERROR", "Can't send message")
@@ -819,7 +854,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self.com_write(self.dev_addr, cmd, crc)
             self.disp_info("INFO", f"To device --> address: {hex(self.dev_addr)}, command: {cmd}, CRC: {hex(crc)}")
-            sleep(0.1)
+            sleep(self.com_delay)
         except:
             self.disp_info("ERROR", "Can't send message")
 
@@ -879,7 +914,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self.com_write(self.dev_addr, cmd, crc)
             self.disp_info("INFO", f"To device --> address: {hex(self.dev_addr)}, command: {cmd}, CRC: {hex(crc)}")
-            sleep(0.1)
+            sleep(self.com_delay)
         except:
             self.disp_info("ERROR", "Can't send message")
 
@@ -949,7 +984,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self.com_write(self.dev_addr, [cmd], crc)
             self.disp_info("INFO", f"To device --> address: {hex(self.dev_addr)}, command: {hex(cmd)}, CRC: {hex(crc)}")
-            sleep(0.1)
+            sleep(self.com_delay)
         except:
             self.disp_info("ERROR", "Can't send message")
 
@@ -994,7 +1029,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self.com_write(self.dev_addr, [cmd], crc)
             self.disp_info("INFO", f"To device --> address: {hex(self.dev_addr)}, command: {hex(cmd)}, CRC: {hex(crc)}")
-            sleep(0.1)
+            sleep(self.com_delay)
         except:
             self.disp_info("ERROR", "Can't send message")
 
@@ -1040,7 +1075,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self.com_write(self.dev_addr, [cmd], crc)
             self.disp_info("INFO", f"To device --> address: {hex(self.dev_addr)}, command: {hex(cmd)}, CRC: {hex(crc)}")
-            sleep(0.1)
+            sleep(self.com_delay)
         except:
             self.disp_info("ERROR", "Can't send message")
 
